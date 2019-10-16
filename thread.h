@@ -7,10 +7,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <list>
 
 #define SECOND 100000
 #define STACK_SIZE 4096
-
+#define MICROSEC 1000000
 
 typedef unsigned long address_t;
 
@@ -27,8 +28,7 @@ public:
         sigjmp_buf jbuf;
         address_t sp;
         address_t pc;
-	sigjmp_buf sjbuf;
-	
+	sigjmp_buf sjbuf;	
 };
 
 class Thread{
@@ -42,7 +42,27 @@ public:
 	 * int uthread_join(int tid, void **retval);
 	*/
 	Thread_id uthread_create(void *(*start_routine)(void *), void *arg);
+	
 	void test();
+};
+
+class uthread{
+
+public:
+	static std::list<TCB*> WaitingList;
+
+	static std::list<TCB*> ReadyList;
+
+	static std::list<TCB*> RunningList;
+
+	//static struct itimerval timer;
+
+	//static struct sigevent evp;
+
+	static int uthread_init(int time_slice);
+
+
+
 };
 
 

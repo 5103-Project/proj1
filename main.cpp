@@ -37,10 +37,11 @@ int main()
 {
     Thread *t1 = new Thread();
     //setup();
+    uthread::uthread_init(300);
     t1->test();
-    t1->uthread_create(f,NULL);
+    //t1->uthread_create(f,NULL);
     //uthread_create(g, NULL);
-    sleep(3);
+    while(1);
     return 0;
 }
 
