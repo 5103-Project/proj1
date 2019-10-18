@@ -140,7 +140,7 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
 	//this->tcb->id = uthread::Thread_ID;
 	//unblock();
 	
-	printForDebug();
+	//printForDebug();
 
 	return uthread::Thread_ID;
 	//return 0;
@@ -166,21 +166,20 @@ void handler(int sig){
 	Thread* running_thread = uthread::Threads[running_thread_TCB->id];
 	cout<<"yield from a running thread "<<running_thread_TCB->id<<"\n";
 	
-	// used for debugging
+	/* used for debugging
 	cout<<"There are the current threads we have:"<<endl;
         for (int i=0;i<uthread::Threads.size();i++){
                 cout<<uthread::Threads[i]->tcb->id<<endl;
         }
-	// 
+	*/
+
+	// printForDebug();	
 
 	running_thread->uthread_yield();
 	
 	//siglongjmp(env, 1);	
 	//sigaddset(&sigsetBlock, SIGALRM);
 	//unblock();
-	for (int i=0;i<uthread::Threads.size();i++){
-		cout<<uthread::Threads[i]<<endl;
-	}
 }
 
 int uthread::uthread_init(int time_slice){
@@ -205,7 +204,7 @@ int uthread::uthread_init(int time_slice){
 	//uthread::Threads[0] = main_thread;
 
 	// test for initialization of main thread
-	printForDebug();
+	//printForDebug();
 
 	//main_thread->tcb->id = 0;
 
@@ -306,7 +305,9 @@ void uthread::context_switch(Thread* t1, Thread* t2){
 	cout<<"switch from "<<t1->tcb->id<<'\t'<<"to \t"<<t2->tcb->id;
 	if(t1 != NULL){
 		cout<<" save context\n";
-		sigsetjmp(t1->tcb->jbuf,1);
+		if(!sigsetjmp(t1->tcb->jbuf,1)){
+			return;
+		}
 	}
 	//unblock();
 	siglongjmp(t2->tcb->jbuf,1);
