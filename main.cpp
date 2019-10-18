@@ -11,9 +11,6 @@ void *f(void*)
     while(1) {
         ++i;
         printf("in f (%d)\n",i);
-        if (i % 3 == 0) {
-            printf("f: switching\n");
-        }
         sleep(1);
     }
 }
@@ -37,10 +34,11 @@ int main()
 {
     Thread *t1 = new Thread();
     //setup();
-    uthread::uthread_init(300);
-    t1->test();
-    //t1->uthread_create(f,NULL);
-    //uthread_create(g, NULL);
+    uthread::uthread_init(2 * MICROSEC);
+    t1->uthread_create(f,NULL);
+    
+    Thread *t2 = new Thread(); 
+    //t2->uthread_create(g, NULL);
     while(1);
     return 0;
 }
