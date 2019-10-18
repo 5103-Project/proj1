@@ -84,6 +84,8 @@ std::list<TCB*> uthread::FinishedList;
 
 static void contextSwitch(Thread t1, Thread t2);
 
+void printForDebug();
+
 void block(){
         if(sigprocmask(SIG_BLOCK, &sigsetBlock, NULL) < 0){
                 std::cerr<<"block signal failed\n";
@@ -102,8 +104,13 @@ void unblock(){
 
 Thread::Thread(){
 	this->tcb = new TCB();
+	this->tcb->id = uthread::Thread_ID;
+	uthread::Threads[this->tcb->id] = this;
+	uthread::Thread_ID++;
 	this->tcb->stack = new char[STACK_SIZE];
 	this->tcb->stack_size = STACK_SIZE;
+	this->S = READY;
+	uthread::ReadyList.push_back(this->tcb);
 }
 
 Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
@@ -127,11 +134,14 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
         //sigemptyset(&tcb->jbuf->__saved_mask);
         //siglongjmp(tcb->sjbuf,1);
 	
-	uthread::ReadyList.push_back(this->tcb);
-	uthread::Thread_ID++;
-	uthread::Threads[uthread::Thread_ID] = this;
-	this->tcb->id = uthread::Thread_ID;
+	//uthread::ReadyList.push_back(this->tcb);
+	//uthread::Thread_ID++;
+	//uthread::Threads[uthread::Thread_ID] = this;
+	//this->tcb->id = uthread::Thread_ID;
 	//unblock();
+	
+	printForDebug();
+
 	return uthread::Thread_ID;
 	//return 0;
 }
@@ -182,21 +192,22 @@ int uthread::uthread_init(int time_slice){
 	}
 
 	// main thread
-	
+	//uthread::Thread_ID = 0;	
 	Thread* main_thread = new Thread();
+	cout<<uthread::Thread_ID<<endl;
 	main_thread->S = RUNNING;
 	uthread::RunningList.push_back(main_thread->tcb);
-	uthread::Threads[0] = main_thread;
+	uthread::ReadyList.remove(main_thread->tcb);
+	
+	// store the current context of main thread
+	sigsetjmp(main_thread->tcb->jbuf,1);
 
-    	//(jbuf[0]->__jmpbuf)[JB_SP] = translate_address(sp);
-    	//(jbuf[0]->__jmpbuf)[JB_PC] = translate_address(pc);
-   	//sigemptyset(&jbuf[0]->__saved_mask);     
-        //cout<<"create thread"<<endl;
-        //main_thread->tcb->sp = (address_t)tcb->stack + STACK_SIZE - sizeof(int);
-        //this->tcb->pc = (address_t)(start_routine);
+	//uthread::Threads[0] = main_thread;
 
+	// test for initialization of main thread
+	printForDebug();
 
-	main_thread->tcb->id = 0;
+	//main_thread->tcb->id = 0;
 
 	timer.it_value.tv_sec = time_slice / MICROSEC;
 	timer.it_value.tv_usec = time_slice % MICROSEC;
@@ -220,7 +231,7 @@ int uthread::uthread_init(int time_slice){
         	exit(1);
 	}
 	// Receive SIGVTALRM and call the handler function of sa.
-
+	
 	if(sigemptyset(&sigsetBlock) < 0){
 		std::cerr << "sigset error.\n";
 	}
@@ -312,6 +323,22 @@ int uthread::uthread_terminate(int tid){
 	return 0;
 }
 
+void printForDebug(){
+	cout<<"Threads size:"<<uthread::Thread_ID<<endl;
+        cout<<"Threads"<<endl;
+        for (int i=0; i < uthread::Threads.size();i++){
+                cout<<uthread::Threads[i]->tcb->id<<" State: "<<uthread::Threads[i]->S<<endl;
+        }
+        cout<<"ReadyList"<<endl;
 
+	for (std::list<TCB*>::iterator it=uthread::ReadyList.begin(); it != uthread::ReadyList.end(); ++it){
+                cout<<(*it)->id<<endl;
+        }
+	cout<<"RunningList"<<endl;
+	for (std::list<TCB*>::iterator it=uthread::RunningList.begin(); it != uthread::RunningList.end(); ++it){
+                cout<<(*it)->id<<endl;
+        }
+
+}
 
 
