@@ -122,9 +122,9 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
 
 
         sigsetjmp(tcb->jbuf,1);
-        (tcb->jbuf->__jmpbuf)[JB_SP] = translate_address(tcb->sp);
-        (tcb->jbuf->__jmpbuf)[JB_PC] = translate_address(tcb->pc);
-        sigemptyset(&tcb->jbuf->__saved_mask);
+        //(tcb->jbuf->__jmpbuf)[JB_SP] = translate_address(tcb->sp);
+        //(tcb->jbuf->__jmpbuf)[JB_PC] = translate_address(tcb->pc);
+        //sigemptyset(&tcb->jbuf->__saved_mask);
         //siglongjmp(tcb->sjbuf,1);
 	
 	uthread::ReadyList.push_back(this->tcb);
@@ -155,12 +155,22 @@ void handler(int sig){
 	TCB* running_thread_TCB = uthread::RunningList.front();	
 	Thread* running_thread = uthread::Threads[running_thread_TCB->id];
 	cout<<"yield from a running thread "<<running_thread_TCB->id<<"\n";
+	
+	// used for debugging
+	cout<<"There are the current threads we have:"<<endl;
+        for (int i=0;i<uthread::Threads.size();i++){
+                cout<<uthread::Threads[i]->tcb->id<<endl;
+        }
+	// 
+
 	running_thread->uthread_yield();
 	
 	//siglongjmp(env, 1);	
 	//sigaddset(&sigsetBlock, SIGALRM);
 	//unblock();
-	
+	for (int i=0;i<uthread::Threads.size();i++){
+		cout<<uthread::Threads[i]<<endl;
+	}
 }
 
 int uthread::uthread_init(int time_slice){
@@ -281,14 +291,14 @@ int Thread::uthread_join(int tid, void **retval){
 	
 void uthread::context_switch(Thread* t1, Thread* t2){
 	//block();
+	//t1 = uthread::Threads[1];
 	cout<<"switch from "<<t1->tcb->id<<'\t'<<"to \t"<<t2->tcb->id;
 	if(t1 != NULL){
 		cout<<" save context\n";
 		sigsetjmp(t1->tcb->jbuf,1);
 	}
 	//unblock();
-	//siglongjmp(t2->tcb->jbuf,1);
-	
+	siglongjmp(t2->tcb->jbuf,1);
 }
 
 int uthread::uthread_terminate(int tid){

@@ -32,9 +32,10 @@ void *g(void*)
 
 int main()
 {
-    Thread *t1 = new Thread();
     //setup();
     uthread::uthread_init(2 * MICROSEC);
+    
+    Thread *t1 = new Thread();
     t1->uthread_create(f,NULL);
     
     Thread *t2 = new Thread(); 
