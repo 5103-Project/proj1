@@ -47,6 +47,10 @@ public:
 	
 	int uthread_yield();
 
+	int uthread_self(void);
+
+	int uthread_join(int tid, void **retval);
+
 	Thread();
 	
 	void test();
@@ -75,7 +79,11 @@ public:
 
 	static void context_switch(Thread* t1, Thread* t2);
 
+	static int uthread_terminate(int tid);
 
+	static int uthread_suspend(int tid);
+
+	static int uthread_resume(int tid);
 };
 
 

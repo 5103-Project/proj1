@@ -80,6 +80,8 @@ std::list<TCB*> uthread::ReadyList;
 
 std::list<TCB*> uthread::RunningList;
 
+std::list<TCB*> uthread::FinishedList;
+
 static void contextSwitch(Thread t1, Thread t2);
 
 void block(){
@@ -105,7 +107,7 @@ Thread::Thread(){
 }
 
 Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
-	block();
+	//block();
 	cout<<"create thread"<<endl;
         this->tcb->sp = (address_t)tcb->stack + STACK_SIZE - sizeof(int);
         this->tcb->pc = (address_t)(start_routine);
@@ -119,7 +121,7 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
         //tcb->sp -= sizeof(int);
 
 
-        //sigsetjmp(tcb->sjbuf,1);
+        sigsetjmp(tcb->jbuf,1);
         (tcb->jbuf->__jmpbuf)[JB_SP] = translate_address(tcb->sp);
         (tcb->jbuf->__jmpbuf)[JB_PC] = translate_address(tcb->pc);
         sigemptyset(&tcb->jbuf->__saved_mask);
@@ -129,7 +131,7 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
 	uthread::Thread_ID++;
 	uthread::Threads[uthread::Thread_ID] = this;
 	this->tcb->id = uthread::Thread_ID;
-	unblock();
+	//unblock();
 	return uthread::Thread_ID;
 	//return 0;
 }
@@ -144,16 +146,20 @@ void fool(){
 void handler(int sig){
 	
 	Thread* T_from, *T_to;
-	block();
-	cout<<"there\n";
+	//block();
+	cout<<"there is handler\n";
+	
+	//jmp_buf env;
+	//sigsetjmp(env,1);
 	
 	TCB* running_thread_TCB = uthread::RunningList.front();	
 	Thread* running_thread = uthread::Threads[running_thread_TCB->id];
-	cout<<"yield from a running thread\n";
+	cout<<"yield from a running thread "<<running_thread_TCB->id<<"\n";
 	running_thread->uthread_yield();
 	
+	//siglongjmp(env, 1);	
 	//sigaddset(&sigsetBlock, SIGALRM);
-	unblock();
+	//unblock();
 	
 }
 
@@ -172,6 +178,14 @@ int uthread::uthread_init(int time_slice){
 	uthread::RunningList.push_back(main_thread->tcb);
 	uthread::Threads[0] = main_thread;
 
+    	//(jbuf[0]->__jmpbuf)[JB_SP] = translate_address(sp);
+    	//(jbuf[0]->__jmpbuf)[JB_PC] = translate_address(pc);
+   	//sigemptyset(&jbuf[0]->__saved_mask);     
+        //cout<<"create thread"<<endl;
+        //main_thread->tcb->sp = (address_t)tcb->stack + STACK_SIZE - sizeof(int);
+        //this->tcb->pc = (address_t)(start_routine);
+
+
 	main_thread->tcb->id = 0;
 
 	timer.it_value.tv_sec = time_slice / MICROSEC;
@@ -184,15 +198,18 @@ int uthread::uthread_init(int time_slice){
                 std::cerr<<"timer set up failed!\n";
                 exit(-1);
         }
+	// The setitimer function counts down towards zero if the
+	// process is executed and delivers SIGVTALRM upon expiration.
 
 
 
 	sa.sa_handler = &handler;
-
+	
 	if (sigaction(SIGVTALRM, &sa, nullptr) < 0) {
         	std::cerr << "system error: sigaction error."<< std::endl;
         	exit(1);
 	}
+	// Receive SIGVTALRM and call the handler function of sa.
 
 	if(sigemptyset(&sigsetBlock) < 0){
 		std::cerr << "sigset error.\n";
@@ -242,16 +259,49 @@ int Thread::uthread_yield(){
 	}
 	*/	
 }
+int Thread::uthread_self(void){
+
+	return this->tcb->id;
+
+}
+
+int Thread::uthread_join(int tid, void **retval){
+
+	Thread* target = uthread::Threads[tid];
+	while (target->S != FINISHED){
+		this->uthread_yield();
+	}
+	if (retval != NULL){
+		// UNFINISHED
+	}
+	return 0;
 
 
+}
+	
 void uthread::context_switch(Thread* t1, Thread* t2){
-	block();
-	cout<<"switch from "<<t1->tcb->id<<'\t'<<"to\t"<<t2->tcb->id;
+	//block();
+	cout<<"switch from "<<t1->tcb->id<<'\t'<<"to \t"<<t2->tcb->id;
 	if(t1 != NULL){
-		cout<<"save context\n";
+		cout<<" save context\n";
 		sigsetjmp(t1->tcb->jbuf,1);
 	}
-	unblock();
-	siglongjmp(t2->tcb->jbuf,1);
+	//unblock();
+	//siglongjmp(t2->tcb->jbuf,1);
 	
 }
+
+int uthread::uthread_terminate(int tid){
+
+	Thread* target = uthread::Threads[tid];
+	//TCB* tcb = target->tcb;
+	//delete [] tcb->stack;
+	//delete tcb;
+	target->S = FINISHED;
+	uthread::FinishedList.push_back(target->tcb);
+	return 0;
+}
+
+
+
+
