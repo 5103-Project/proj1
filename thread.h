@@ -9,6 +9,8 @@
 #include <sys/time.h>
 #include <list>
 #include <map>
+#include <vector>
+#include <tuple>
 
 #define SECOND 100000
 #define STACK_SIZE 4096
@@ -63,7 +65,10 @@ public:
 
 	static std::map<Thread_id, Thread*> Threads;
 
-	static std::list<TCB*> WaitingList;
+	static std::map<TCB*, int> WaitingList;
+	// int refers to the thread id the current thread is waiting waiting for.
+	// It's set to 0 if it is suspended and waits for resume, because we assume 
+	// no one should be waiting for the main thread.
 
 	static std::list<TCB*> ReadyList;
 

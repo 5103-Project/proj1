@@ -38,8 +38,12 @@ int main()
     Thread *t1 = new Thread();
     t1->uthread_create(f,NULL);
     
-    //Thread *t2 = new Thread(); 
-    //t2->uthread_create(g, NULL);
+    // "fake" test case for termination
+    // sleep(5);
+    //uthread::uthread_terminate(t1->tcb->id);
+
+    Thread *t2 = new Thread(); 
+    t2->uthread_create(g, NULL);
     while(1);
     return 0;
 }
