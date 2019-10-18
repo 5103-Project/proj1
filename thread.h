@@ -31,6 +31,7 @@ public:
         sigjmp_buf jbuf;
         address_t sp;
         address_t pc;
+	void** retval;
 };
 
 class Thread{

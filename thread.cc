@@ -118,7 +118,12 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
 	cout<<"create thread"<<endl;
         this->tcb->sp = (address_t)tcb->stack + STACK_SIZE - sizeof(int);
         this->tcb->pc = (address_t)(start_routine);
+	
 
+	// This line of code causes BUG !!!!
+	// --------------------
+	*this->tcb->retval = (*start_routine)(arg);
+	// --------------------
 
         //stack setup
         //int temp_arg = *((int*)arg);
@@ -289,11 +294,28 @@ int Thread::uthread_join(int tid, void **retval){
 
 	Thread* target = uthread::Threads[tid];
 	while (target->S != FINISHED){
-		this->uthread_yield();
+		this->S = WAITING;
+		uthread::WaitingList[this->tcb] = tid;
+		//this->uthread_yield();
+		// find the next thread and do context switch
+		if (uthread::ReadyList.size()>0){
+			TCB* next_TCB = uthread::ReadyList.front();
+			Thread* next_thread = uthread::Threads[next_TCB->id];
+			uthread::ReadyList.pop_front();
+			uthread::RunningList.push_back(next_TCB);
+			uthread::Threads[next_TCB->id]->S = RUNNING;
+			uthread::context_switch(target, next_thread);	
+		}
+		else {
+			cerr<<"this is last thread!"<<endl;
+			return -1;
+		}
+
 	}
 	if (retval != NULL){
-		// UNFINISHED
+		*retval = *target->tcb->retval;
 	}
+
 	return 0;
 
 
