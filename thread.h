@@ -29,6 +29,7 @@ public:
         sigjmp_buf jbuf;
         address_t sp;
         address_t pc;
+	void** retval;
 };
 
 class Thread{
@@ -47,6 +48,10 @@ public:
 	
 	int uthread_yield();
 
+	int uthread_self(void);
+
+	int uthread_join(int tid, void **retval);
+
 	Thread();
 	
 	void test();
@@ -59,8 +64,12 @@ public:
 
 	static std::map<Thread_id, Thread*> Threads;
 
-	static std::list<TCB*> WaitingList;
-
+	//static std::list<TCB*> WaitingList;
+	static std::map<TCB*, int> WaitingList;
+	// int refers to the thread id the current thread is waiting waiting for.
+	// It's set to 0 if it is suspended and waits for resume, because we assume 
+	// no one should be waiting for the main thread.
+	
 	static std::list<TCB*> ReadyList;
 
 	static std::list<TCB*> RunningList;
@@ -75,6 +84,11 @@ public:
 
 	static void context_switch(Thread* t1, Thread* t2);
 
+	static int uthread_terminate(int tid);
+
+	static int uthread_suspend(int tid);
+
+	static int uthread_resume(int tid);
 
 };
 

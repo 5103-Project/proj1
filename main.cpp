@@ -27,9 +27,9 @@ void *g(void*)
     while(1){
         ++i;
         printf("in g (%d)\n",i);
-        if (i % 5 == 0) {
-            printf("g: switching\n");
-        }
+        //if (i % 5 == 0) {
+        //    printf("g: switching\n");
+        //}
         myPause();
     }
 }
