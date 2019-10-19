@@ -4,6 +4,12 @@
 using namespace std;
 
 
+void myPause(){
+	int t = 1;
+	for(int i = 0; i < 100000000; i++){
+		t *= i;
+	}
+}
 
 void *f(void*)
 {
@@ -11,7 +17,7 @@ void *f(void*)
     while(1) {
         ++i;
         printf("in f (%d)\n",i);
-        sleep(1);
+        myPause();
     }
 }
 
@@ -24,7 +30,7 @@ void *g(void*)
         if (i % 5 == 0) {
             printf("g: switching\n");
         }
-        sleep(1);
+        myPause();
     }
 }
 
@@ -49,11 +55,13 @@ int main()
 
     main_thread->tcb->id = 0;
     sigsetjmp(main_thread->tcb->jbuf,1);
+ 
 
     while(1){
     	cout<<"back to main\n";
-    	sleep(1);
+    	myPause();
     }
+
     return 0;
 }
 

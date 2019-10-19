@@ -201,8 +201,8 @@ int uthread::uthread_init(int time_slice){
                 exit(1);
         }
 */
-        //if (sigaction(SIGVTALRM, &sa, nullptr) < 0) {
-        if (sigaction(SIGINT, &sa, nullptr) < 0) {
+        if (sigaction(SIGVTALRM, &sa, nullptr) < 0) {
+        //if (sigaction(SIGINT, &sa, nullptr) < 0) {
                  std::cerr << "system error: sigaction error."<< std::endl;
                 exit(1);
         }
