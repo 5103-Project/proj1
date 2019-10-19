@@ -38,8 +38,22 @@ int main()
     t1->uthread_create(f,NULL);
     
     Thread *t2 = new Thread(); 
-    //t2->uthread_create(g, NULL);
-    while(1);
+    t2->uthread_create(g, NULL);
+
+    // main thread
+    Thread* main_thread = new Thread();
+
+    main_thread->S = RUNNING;
+    uthread::RunningList.push_back(main_thread->tcb);
+    uthread::Threads[0] = main_thread;
+
+    main_thread->tcb->id = 0;
+    sigsetjmp(main_thread->tcb->jbuf,1);
+
+    while(1){
+    	cout<<"back to main\n";
+    	sleep(1);
+    }
     return 0;
 }
 

@@ -68,6 +68,8 @@ struct sigevent evp;
 
 struct sigaction sa = {0};
 
+struct sigaction sa_suspend = {0};
+
 sigset_t sigsetBlock;
 
 Thread_id uthread::Thread_ID;
@@ -119,7 +121,7 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
         //tcb->sp -= sizeof(int);
 
 
-        //sigsetjmp(tcb->sjbuf,1);
+	sigsetjmp(tcb->jbuf,1);
         (tcb->jbuf->__jmpbuf)[JB_SP] = translate_address(tcb->sp);
         (tcb->jbuf->__jmpbuf)[JB_PC] = translate_address(tcb->pc);
         sigemptyset(&tcb->jbuf->__saved_mask);
@@ -135,7 +137,7 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
 }
 
 
-void fool(){
+void fool(int sig){
 	cout<<"fool\n";
 }
 
@@ -158,54 +160,66 @@ void handler(int sig){
 }
 
 int uthread::uthread_init(int time_slice){
-	cout<<"initialize user level thread:\n";
-	uthread::Thread_ID = 0;
-	if(time_slice < 0){
-		std::cerr<<"time slice should be a postive value!\n";
-		return FAIL;
-	}
+        cout<<"initialize user level thread:\n";
+        uthread::Thread_ID = 0;
+        if(time_slice < 0){
+                std::cerr<<"time slice should be a postive value!\n";
+                return FAIL;
+        }
+/*
+        // main thread
+        Thread* main_thread = new Thread();
+        sigsetjmp(main_thread->tcb->jbuf,1);
 
-	// main thread
-	
-	Thread* main_thread = new Thread();
-	main_thread->S = RUNNING;
-	uthread::RunningList.push_back(main_thread->tcb);
-	uthread::Threads[0] = main_thread;
+        main_thread->S = RUNNING;
+        uthread::RunningList.push_back(main_thread->tcb);
+        uthread::Threads[0] = main_thread;
 
-	main_thread->tcb->id = 0;
+        main_thread->tcb->id = 0;
+*/
 
-	timer.it_value.tv_sec = time_slice / MICROSEC;
-	timer.it_value.tv_usec = time_slice % MICROSEC;
-	timer.it_interval.tv_sec = time_slice / MICROSEC;
-	timer.it_interval.tv_usec = time_slice % MICROSEC;
-        
-	
-	if(setitimer(ITIMER_VIRTUAL, &timer, NULL) == -1){
+
+        timer.it_value.tv_sec = time_slice / MICROSEC;
+        timer.it_value.tv_usec = time_slice % MICROSEC;
+        timer.it_interval.tv_sec = time_slice / MICROSEC;
+        timer.it_interval.tv_usec = time_slice % MICROSEC;
+
+
+        if(setitimer(ITIMER_VIRTUAL, &timer, NULL) == -1){
                 std::cerr<<"timer set up failed!\n";
                 exit(-1);
         }
 
 
 
-	sa.sa_handler = &handler;
+        sa.sa_handler = &handler;
+        //sa_suspend.sa_handler = &handler;
 
-	if (sigaction(SIGVTALRM, &sa, nullptr) < 0) {
-        	std::cerr << "system error: sigaction error."<< std::endl;
-        	exit(1);
-	}
+/*
+        if (sigaction(SIGINT, &sa_suspend, nullptr) < 0) {
+                std::cerr << "system error: sigaction error."<< std::endl;
+                exit(1);
+        }
+*/
+        //if (sigaction(SIGVTALRM, &sa, nullptr) < 0) {
+        if (sigaction(SIGINT, &sa, nullptr) < 0) {
+                 std::cerr << "system error: sigaction error."<< std::endl;
+                exit(1);
+        }
 
-	if(sigemptyset(&sigsetBlock) < 0){
-		std::cerr << "sigset error.\n";
-	}
+        if(sigemptyset(&sigsetBlock) < 0){
+                std::cerr << "sigset error.\n";
+        }
 
-	if (sigaddset(&sigsetBlock, SIGALRM) < 0) {
-        	std::cerr << "system error: sigset error."<< std::endl;
-        	exit(1);
-	}
+        if (sigaddset(&sigsetBlock, SIGALRM) < 0) {
+                std::cerr << "system error: sigset error."<< std::endl;
+                exit(1);
+        }
 
-	return SUCCESS;
+        return SUCCESS;
 
 }
+
 
 int Thread::uthread_yield(){
 	TCB* current_TCB, *next_TCB;
@@ -249,7 +263,12 @@ void uthread::context_switch(Thread* t1, Thread* t2){
 	cout<<"switch from "<<t1->tcb->id<<'\t'<<"to\t"<<t2->tcb->id;
 	if(t1 != NULL){
 		cout<<"save context\n";
-		sigsetjmp(t1->tcb->jbuf,1);
+		
+		if(sigsetjmp(t1->tcb->jbuf,1)){
+			return;	
+		}
+		
+		//sigsetjmp(t1->tcb->jbuf, 1);
 	}
 	unblock();
 	siglongjmp(t2->tcb->jbuf,1);
