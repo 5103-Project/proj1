@@ -90,6 +90,7 @@ public:
 
 	static int uthread_resume(int tid);
 
+    static int uthread_self();
 };
 
 

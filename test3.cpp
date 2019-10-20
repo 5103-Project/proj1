@@ -65,7 +65,7 @@ int main()
     main_thread->tcb->id = 0;
     sigsetjmp(main_thread->tcb->jbuf,1);
    // myPause();
-    printForDebug();
+    //printForDebug();
    
     uthread::uthread_suspend(t2->tcb->id);
    
