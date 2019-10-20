@@ -17,6 +17,7 @@ void *f(void*)
     while(1) {
         ++i;
         printf("in f (%d)\n",i);
+	printf("thread id %d", uthread::getCurrentUid());
         myPause();
     }
 }
@@ -27,6 +28,7 @@ void *g(void*)
     while(1){
         ++i;
         printf("in g (%d)\n",i);
+	printf("thread id %d", uthread::getCurrentUid());
         //if (i % 5 == 0) {
         //    printf("g: switching\n");
         //}

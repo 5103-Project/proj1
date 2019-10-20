@@ -456,4 +456,16 @@ void printForDebug(){
 
 
 
-
+int uthread::getCurrentUid(){
+	if(uthread::RunningList.size() == 1){
+		return RunningList.front()->id;
+	}
+	else if(uthread::RunningList.size() > 1){
+		std::cerr<<"More than one running thread!\n";
+		exit(-1);
+	}
+	else{
+		cout<<"no running thread\n";
+		exit(-1);
+	}
+}
