@@ -38,9 +38,12 @@ void *g(void*)
 
 int main()
 {
-    Thread *t1 = new Thread();
+    cout<<"This test case is used to test uthread_init, uthread_create,"<<endl;
+    cout<<"uthread_yeild, scheduler, time slcing and basic context swtich."<<endl;
     //setup();
     uthread::uthread_init(2 * MICROSEC);
+
+    Thread *t1 = new Thread();
     t1->uthread_create(f,NULL);
     
     Thread *t2 = new Thread(); 
@@ -64,4 +67,3 @@ int main()
 
     return 0;
 }
-

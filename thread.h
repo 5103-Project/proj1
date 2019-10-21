@@ -90,8 +90,7 @@ public:
 
 	static int uthread_resume(int tid);
 
-	static int getCurrentUid();
-
+    static int uthread_self();
 };
 
 

@@ -112,6 +112,7 @@ Thread::Thread(){
 	this->tcb = new TCB();
 	this->tcb->stack = new char[STACK_SIZE];
 	this->tcb->stack_size = STACK_SIZE;
+	this->S = INIT;
 }
 
 Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
@@ -139,6 +140,7 @@ Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
 	uthread::Thread_ID++;
 	uthread::Threads[uthread::Thread_ID] = this;
 	this->tcb->id = uthread::Thread_ID;
+	this->S = READY;
 	unblock();
 	return uthread::Thread_ID;
 	//return 0;
@@ -283,9 +285,10 @@ int Thread::uthread_join(int tid, void **retval){
 			TCB* next_TCB = uthread::ReadyList.front();
 			Thread* next_thread = uthread::Threads[next_TCB->id];
 			uthread::ReadyList.pop_front();
+			uthread::RunningList.pop_front();
 			uthread::RunningList.push_back(next_TCB);
 			uthread::Threads[next_TCB->id]->S = RUNNING;
-			uthread::context_switch(target, next_thread);	
+			uthread::context_switch(this, next_thread);	
 		}
 		else {
 			cerr<<"this is last thread!"<<endl;
@@ -388,6 +391,7 @@ int uthread::uthread_suspend(int tid){
 		uthread::ReadyList.remove(target->tcb);
 		target->S = WAITING;
 		uthread::WaitingList[target->tcb] = 0;
+		printf("Thread %d is suspended from READY to WAITING!\n",tid);
 		return 0;
         }
 	else if (target->S == RUNNING){
@@ -403,6 +407,7 @@ int uthread::uthread_suspend(int tid){
                         uthread::ReadyList.pop_front();
                         uthread::RunningList.push_back(next_TCB);
                         uthread::Threads[next_TCB->id]->S = RUNNING;
+			printf("Thread %d is suspended from RUNNING to WAITING!\n",tid);
                         uthread::context_switch(target, next_thread);
                 }
                 else {
@@ -424,6 +429,7 @@ int uthread::uthread_resume(int tid){
 			uthread::WaitingList.erase(target->tcb);
 			target->S = READY;
 			uthread::ReadyList.push_back(target->tcb);
+			printf("Resume Thread %d!\n",tid);
 			return 0;
 		}
 		else {
@@ -456,9 +462,7 @@ void printForDebug(){
 
 }
 
-
-
-int uthread::getCurrentUid(){
+int uthread::uthread_self(){
 	if(uthread::RunningList.size() == 1){
 		return RunningList.front()->id;
 	}
@@ -484,3 +488,6 @@ int acquire(lock_t *lock){
 int release(lock_t *lock){
 	return TAS(lock, 0) == 1 ? SUCCESS : FAIL;
 }
+
+
+
