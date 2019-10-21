@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "uthread.h"
 #include <iostream>
 
 using namespace std;
@@ -74,21 +74,19 @@ struct sigaction sa_suspend = {0};
 
 sigset_t sigsetBlock;
 
-Thread_id uthread::Thread_ID;
+//Thread_id  Thread_count;
 
-std::map<Thread_id, Thread*> uthread::Threads;
+//std::map<Thread_id, Thread*>  Threads;
 
-//std::list<TCB*> uthread::WaitingList;
+//std::map<TCB*, int>  WaitingList;
 
-std::map<TCB*, int> uthread::WaitingList;
+//std::list<TCB*>  ReadyList;
 
-std::list<TCB*> uthread::ReadyList;
+//std::list<TCB*>  RunningList;
 
-std::list<TCB*> uthread::RunningList;
+//std::list<TCB*>  FinishedList;
 
-std::list<TCB*> uthread::FinishedList;
-
-static void contextSwitch(Thread t1, Thread t2);
+//static void contextSwitch(Thread t1, Thread t2);
 
 void printForDebug();
 
@@ -110,39 +108,30 @@ void unblock(){
 
 Thread::Thread(){
 	this->tcb = new TCB();
+	this->tcb->id = Thread_count;
+	Threads[this->tcb->id] = this;
+	Thread_count++;
 	this->tcb->stack = new char[STACK_SIZE];
 	this->tcb->stack_size = STACK_SIZE;
-	this->S = INIT;
+	this->S = READY;
+	ReadyList.push_back(this->tcb);
 }
 
-Thread_id Thread::uthread_create(void *(*start_routine)(void *), void *arg){
+Thread_id uthread_create(void *(*start_routine)(void *), void *arg){
 	block();
-	cout<<"create thread"<<endl;
-        this->tcb->sp = (address_t)tcb->stack + STACK_SIZE - sizeof(int);
-        this->tcb->pc = (address_t)(start_routine);
+	Thread* thread = new Thread();
+        thread->tcb->sp = (address_t)thread->tcb->stack + STACK_SIZE - sizeof(int);
+        thread->tcb->pc = (address_t)(start_routine);
 
 
-        //stack setup
-        //int temp_arg = *((int*)arg);
-        //(tcb->sp) = temp_arg;
-        //tcb->sp -= sizeof(int);
-        //tcb->sp = (address_t)(start_routine);
-        //tcb->sp -= sizeof(int);
-
-
-	sigsetjmp(tcb->jbuf,1);
-        (tcb->jbuf->__jmpbuf)[JB_SP] = translate_address(tcb->sp);
-        (tcb->jbuf->__jmpbuf)[JB_PC] = translate_address(tcb->pc);
-        sigemptyset(&tcb->jbuf->__saved_mask);
+	sigsetjmp(thread->tcb->jbuf,1);
+        (thread->tcb->jbuf->__jmpbuf)[JB_SP] = translate_address(thread->tcb->sp);
+        (thread->tcb->jbuf->__jmpbuf)[JB_PC] = translate_address(thread->tcb->pc);
+        sigemptyset(&thread->tcb->jbuf->__saved_mask);
         //siglongjmp(tcb->sjbuf,1);
 	
-	uthread::ReadyList.push_back(this->tcb);
-	uthread::Thread_ID++;
-	uthread::Threads[uthread::Thread_ID] = this;
-	this->tcb->id = uthread::Thread_ID;
-	this->S = READY;
 	unblock();
-	return uthread::Thread_ID;
+	return  Thread_count-1;
 	//return 0;
 }
 
@@ -157,33 +146,42 @@ void handler(int sig){
 	
 	Thread* T_from, *T_to;
 	block();
-	cout<<"there is handler\n";
+	//cout<<"there is handler\n";
 	
-	TCB* running_thread_TCB = uthread::RunningList.front();	
-	Thread* running_thread = uthread::Threads[running_thread_TCB->id];
-	cout<<"yield from a running thread\n";
-	running_thread->uthread_yield();
+	//TCB* running_thread_TCB =  RunningList.front();	
+	//Thread* running_thread =  Threads[running_thread_TCB->id];
+	//cout<<"yield from a running thread\n";
+	uthread_yield();
 	
 	//sigaddset(&sigsetBlock, SIGALRM);
 	unblock();
 	
 }
 
-int uthread::uthread_init(int time_slice){
-        cout<<"initialize user level thread:\n";
-        uthread::Thread_ID = 0;
+int uthread_init(int time_slice){
+        //cout<<"initialize user level thread:\n";
+         Thread_count = 0;
         if(time_slice < 0){
                 std::cerr<<"time slice should be a postive value!\n";
                 return FAIL;
         }
+
+	    // main thread
+    Thread* main_thread = new Thread();
+
+	main_thread->S = RUNNING;
+	RunningList.push_back(main_thread->tcb);
+	ReadyList.remove(main_thread->tcb);
+
+    sigsetjmp(main_thread->tcb->jbuf,1);
 /*
         // main thread
         Thread* main_thread = new Thread();
         sigsetjmp(main_thread->tcb->jbuf,1);
 
         main_thread->S = RUNNING;
-        uthread::RunningList.push_back(main_thread->tcb);
-        uthread::Threads[0] = main_thread;
+         RunningList.push_back(main_thread->tcb);
+         Threads[0] = main_thread;
 
         main_thread->tcb->id = 0;
 */
@@ -231,64 +229,60 @@ int uthread::uthread_init(int time_slice){
 }
 
 
-int Thread::uthread_yield(){
+int uthread_yield(){
+
+        //TCB* running_thread_TCB =  RunningList.front();       
+        //Thread* running_thread =  Threads[running_thread_TCB->id];
+
 	TCB* current_TCB, *next_TCB;
-	current_TCB = this->tcb;
+	current_TCB = RunningList.front();
 
-	if(uthread::ReadyList.size() > 0){
-		next_TCB = uthread::ReadyList.front();
+	if( ReadyList.size() > 0){
+		next_TCB =  ReadyList.front();
 
-		cout<<current_TCB->id<<'\t'<<next_TCB->id<<endl;
+		//cout<<current_TCB->id<<'\t'<<next_TCB->id<<endl;
 
-		Thread* current_thread = uthread::Threads[current_TCB->id];
-		Thread* next_thread = uthread::Threads[next_TCB->id]; 
-		this->S = READY;
+		Thread* current_thread =  Threads[current_TCB->id];
+		Thread* next_thread =  Threads[next_TCB->id]; 
+		current_thread->S = READY;
 		
-		uthread::RunningList.pop_front();
-		uthread::ReadyList.push_back(current_TCB);
-		uthread::ReadyList.pop_front();
-		uthread::RunningList.push_back(next_TCB);
+		 RunningList.pop_front();
+		 ReadyList.push_back(current_TCB);
+		 ReadyList.pop_front();
+		 RunningList.push_back(next_TCB);
 		
-		uthread::Threads[next_TCB->id]->S = RUNNING;
-		uthread::context_switch(current_thread, next_thread);
+		 Threads[next_TCB->id]->S = RUNNING;
+		 context_switch(current_thread, next_thread);
 
 		
 	}else{
 		// resume the running thread
 
-		this->S = RUNNING;
+		//this->S = RUNNING;
+		
+		// Nothing happens
 	}
-	
-	//delete all finished thread
-	/*
-	for(auto finished_t : uthread::FinishedList){
-		;
-	}
-	*/	
 }
 
-int Thread::uthread_self(void){
 
-	return this->tcb->id;
 
-}
-
-int Thread::uthread_join(int tid, void **retval){
-
-	Thread* target = uthread::Threads[tid];
+int uthread_join(int tid, void **retval){
+	int running_thread_id = uthread_self();
+	Thread* running_thread = Threads[running_thread_id];
+	Thread* target =  Threads[tid];
 	while (target->S != FINISHED){
-		this->S = WAITING;
-		uthread::WaitingList[this->tcb] = tid;
+		running_thread->S = WAITING;
+		 WaitingList[running_thread->tcb] = tid;
 		//this->uthread_yield();
 		// find the next thread and do context switch
-		if (uthread::ReadyList.size()>0){
-			TCB* next_TCB = uthread::ReadyList.front();
-			Thread* next_thread = uthread::Threads[next_TCB->id];
-			uthread::ReadyList.pop_front();
-			uthread::RunningList.pop_front();
-			uthread::RunningList.push_back(next_TCB);
-			uthread::Threads[next_TCB->id]->S = RUNNING;
-			uthread::context_switch(this, next_thread);	
+		if ( ReadyList.size()>0){
+			TCB* next_TCB =  ReadyList.front();
+			Thread* next_thread =  Threads[next_TCB->id];
+			 ReadyList.pop_front();
+			 RunningList.pop_front();
+			 RunningList.push_back(next_TCB);
+			 Threads[next_TCB->id]->S = RUNNING;
+			 context_switch(running_thread, next_thread);	
 		}
 		else {
 			cerr<<"this is last thread!"<<endl;
@@ -306,11 +300,11 @@ int Thread::uthread_join(int tid, void **retval){
 }
 
 
-void uthread::context_switch(Thread* t1, Thread* t2){
+void context_switch(Thread* t1, Thread* t2){
 	block();
-	cout<<"switch from "<<t1->tcb->id<<" to "<<t2->tcb->id;
+	//cout<<"switch from "<<t1->tcb->id<<" to "<<t2->tcb->id;
 	if(t1 != NULL){
-		cout<<" save context\n";
+		//cout<<" save context\n";
 		
 		if(sigsetjmp(t1->tcb->jbuf,1)){
 			return;	
@@ -323,25 +317,25 @@ void uthread::context_switch(Thread* t1, Thread* t2){
 	
 }
 
-int uthread::uthread_terminate(int tid){
+int uthread_terminate(int tid){
 
-	Thread* target = uthread::Threads[tid];
+	Thread* target =  Threads[tid];
 	//TCB* tcb = target->tcb;
 	//delete [] tcb->stack;
 	//delete tcb;
 	if (target->S == READY){
-		uthread::ReadyList.remove(target->tcb);
+		 ReadyList.remove(target->tcb);
 	}
 	else if (target->S == WAITING){
-		//uthread::WaitingList.remove(target->tcb);
+		// WaitingList.remove(target->tcb);
 		std::map<TCB*,int>::iterator it;
-		it = uthread::WaitingList.find(target->tcb);
-		if (it != uthread::WaitingList.end()){
-			uthread::WaitingList.erase(it);
+		it =  WaitingList.find(target->tcb);
+		if (it !=  WaitingList.end()){
+			 WaitingList.erase(it);
 		}
 	}
 	else if (target->S == RUNNING){
-		uthread::RunningList.remove(target->tcb);
+		 RunningList.remove(target->tcb);
 	}
 	else {
 		cerr<<"the thread has already been terminated!"<<endl;
@@ -350,30 +344,30 @@ int uthread::uthread_terminate(int tid){
 	//target->S = FINISHED;
 	
 	// signal to the thread waiting for it
-	for (std::map<TCB*,int>::iterator it=uthread::WaitingList.begin(); it!=uthread::WaitingList.end(); ++it){
+	for (std::map<TCB*,int>::iterator it= WaitingList.begin(); it!= WaitingList.end(); ++it){
 		if (it->second == tid){
 			//TCB* tcb = it->first;
-			Thread* thread = uthread::Threads[it->first->id];
+			Thread* thread =  Threads[it->first->id];
 			thread->S = READY;
-			uthread::ReadyList.push_back(it->first);
-			uthread::WaitingList.erase(it);
+			 ReadyList.push_back(it->first);
+			 WaitingList.erase(it);
 		}
 	
 	}
 	// De-allocation may need to be done
 	
 
-	uthread::FinishedList.push_back(target->tcb);
+	 FinishedList.push_back(target->tcb);
 	if (target->S == RUNNING){
 		//find the next thread and do context switch
-		if (uthread::ReadyList.size()>0){
+		if ( ReadyList.size()>0){
 			target->S = FINISHED;
-			TCB* next_TCB = uthread::ReadyList.front();
-			Thread* next_thread = uthread::Threads[next_TCB->id];
-			uthread::ReadyList.pop_front();
-			uthread::RunningList.push_back(next_TCB);
-			uthread::Threads[next_TCB->id]->S = RUNNING;
-			uthread::context_switch(target, next_thread);	
+			TCB* next_TCB =  ReadyList.front();
+			Thread* next_thread =  Threads[next_TCB->id];
+			 ReadyList.pop_front();
+			 RunningList.push_back(next_TCB);
+			 Threads[next_TCB->id]->S = RUNNING;
+			 context_switch(target, next_thread);	
 		}
 		else {
 			cerr<<"this is last thread!"<<endl;
@@ -384,31 +378,31 @@ int uthread::uthread_terminate(int tid){
 	return 0;
 }
 
-int uthread::uthread_suspend(int tid){
+int uthread_suspend(int tid){
 	// put thread from running to waiting.
-	Thread* target = uthread::Threads[tid];
+	Thread* target =  Threads[tid];
 	if (target->S == READY){
-		uthread::ReadyList.remove(target->tcb);
+		 ReadyList.remove(target->tcb);
 		target->S = WAITING;
-		uthread::WaitingList[target->tcb] = 0;
-		printf("Thread %d is suspended from READY to WAITING!\n",tid);
+		 WaitingList[target->tcb] = 0;
+		//printf("Thread %d is suspended from READY to WAITING!\n",tid);
 		return 0;
         }
 	else if (target->S == RUNNING){
-                uthread::RunningList.remove(target->tcb);
+                 RunningList.remove(target->tcb);
 		//target->S = WAITING;
-		uthread::WaitingList[target->tcb] = 0;
+		 WaitingList[target->tcb] = 0;
 
 		//find the next thread and do context switch
-                if (uthread::ReadyList.size()>0){
+                if ( ReadyList.size()>0){
                         target->S = WAITING;
-                 	TCB* next_TCB = uthread::ReadyList.front();
-                        Thread* next_thread = uthread::Threads[next_TCB->id];
-                        uthread::ReadyList.pop_front();
-                        uthread::RunningList.push_back(next_TCB);
-                        uthread::Threads[next_TCB->id]->S = RUNNING;
-			printf("Thread %d is suspended from RUNNING to WAITING!\n",tid);
-                        uthread::context_switch(target, next_thread);
+                 	TCB* next_TCB =  ReadyList.front();
+                        Thread* next_thread =  Threads[next_TCB->id];
+                         ReadyList.pop_front();
+                         RunningList.push_back(next_TCB);
+                         Threads[next_TCB->id]->S = RUNNING;
+			//printf("Thread %d is suspended from RUNNING to WAITING!\n",tid);
+                         context_switch(target, next_thread);
                 }
                 else {
                         cerr<<"this is last thread!"<<endl;
@@ -422,14 +416,14 @@ int uthread::uthread_suspend(int tid){
 	return 0;
 }
 
-int uthread::uthread_resume(int tid){
-	Thread* target = uthread::Threads[tid];
+int uthread_resume(int tid){
+	Thread* target =  Threads[tid];
 	if (target->S == WAITING){
-		if (uthread::WaitingList[target->tcb] == 0){
-			uthread::WaitingList.erase(target->tcb);
+		if ( WaitingList[target->tcb] == 0){
+			 WaitingList.erase(target->tcb);
 			target->S = READY;
-			uthread::ReadyList.push_back(target->tcb);
-			printf("Resume Thread %d!\n",tid);
+			 ReadyList.push_back(target->tcb);
+			//printf("Resume Thread %d!\n",tid);
 			return 0;
 		}
 		else {
@@ -445,28 +439,28 @@ int uthread::uthread_resume(int tid){
 
 }
 void printForDebug(){
-	cout<<"Threads size:"<<uthread::Thread_ID<<endl;
+	cout<<"Threads size:"<< Thread_count<<endl;
         cout<<"Threads"<<endl;
-        for (int i=0; i < uthread::Threads.size();i++){
-                cout<<uthread::Threads[i]->tcb->id<<" State: "<<uthread::Threads[i]->S<<endl;
+        for (int i=0; i <  Threads.size();i++){
+                cout<< Threads[i]->tcb->id<<" State: "<< Threads[i]->S<<endl;
         }
         cout<<"ReadyList"<<endl;
 
-	for (std::list<TCB*>::iterator it=uthread::ReadyList.begin(); it != uthread::ReadyList.end(); ++it){
+	for (std::list<TCB*>::iterator it= ReadyList.begin(); it !=  ReadyList.end(); ++it){
                 cout<<(*it)->id<<endl;
         }
 	cout<<"RunningList"<<endl;
-	for (std::list<TCB*>::iterator it=uthread::RunningList.begin(); it != uthread::RunningList.end(); ++it){
+	for (std::list<TCB*>::iterator it= RunningList.begin(); it !=  RunningList.end(); ++it){
                 cout<<(*it)->id<<endl;
         }
 
 }
 
-int uthread::uthread_self(){
-	if(uthread::RunningList.size() == 1){
+int uthread_self(void){
+	if( RunningList.size() == 1){
 		return RunningList.front()->id;
 	}
-	else if(uthread::RunningList.size() > 1){
+	else if( RunningList.size() > 1){
 		std::cerr<<"More than one running thread!\n";
 		exit(-1);
 	}

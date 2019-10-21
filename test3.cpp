@@ -1,5 +1,5 @@
 #include<iostream>
-#include"thread.h"
+#include"uthread.h"
 
 using namespace std;
 
@@ -15,13 +15,14 @@ void *f(void*)
     static int k=0;
     while(1) {
         ++k;
-        printf("running thread is %d,in f (%d)\n",uthread::RunningList.front()->id,k);
+        printf("running thread is %d,in f (%d)\n",uthread_self(),k);
 		if(k==3){
-            uthread::uthread_suspend(uthread::uthread_self());
+			cout<<"suspend t1"<<endl;
+            uthread_suspend(uthread_self());
         }
         if(k == 15){			
 			cout<<"Thread of f() is terminated!"<<endl;
-			uthread::uthread_terminate(uthread::uthread_self());
+			uthread_terminate(uthread_self());
 		}
         myPause();
     }
@@ -32,10 +33,10 @@ void *g(void*)
     static int j=0;
     while(1){
         ++j;
-        printf("running thread is %d,in g (%d)\n",uthread::RunningList.front()->id,j);
+        printf("running thread is %d,in g (%d)\n",uthread_self(),j);
 		if(j == 30){			
 			cout<<"Thread of g() is terminated!"<<endl;
-			uthread::uthread_terminate(uthread::uthread_self());
+			uthread_terminate(uthread_self());
 		}
         myPause();
     }
@@ -47,39 +48,33 @@ int main()
 {
     cout<<"This test case is used to test uthread_suspend, uthread_resume"<<endl;
     //setup();
-    uthread::uthread_init(2 * MICROSEC);
-
+    uthread_init(2 * MICROSEC);
+/*
     Thread *t1 = new Thread();
     t1->uthread_create(f,NULL);
     
     Thread *t2 = new Thread(); 
     t2->uthread_create(g, NULL);
-
-    // main thread
-    Thread* main_thread = new Thread();
-
-    main_thread->S = RUNNING;
-    uthread::RunningList.push_back(main_thread->tcb);
-    uthread::Threads[0] = main_thread;
-
-    main_thread->tcb->id = 0;
-    sigsetjmp(main_thread->tcb->jbuf,1);
-   // myPause();
+*/
+    int t1 = uthread_create(f, NULL);
+    int t2 = uthread_create(g, NULL);
     //printForDebug();
-   
-    uthread::uthread_suspend(t2->tcb->id);
+    cout<<"suspend t2"<<endl;
+    uthread_suspend(t2);
    
     for(int i = 0; i <= 10; i++){
         myPause();
     }
-    uthread::uthread_resume(t1->tcb->id);
-    uthread::uthread_resume(t2->tcb->id);
+    cout<<"free t1"<<endl;
+    uthread_resume(t1);
+    cout<<"free t2"<<endl;
+    uthread_resume(t2);
     
     
-	main_thread->uthread_join(t1->uthread_self(),NULL);
+	uthread_join(t1,NULL);
 	cout<<"T1 finished! Back to main!"<<endl;
    
-	main_thread->uthread_join(t2->uthread_self(),NULL);
+	uthread_join(t2,NULL);
 	cout<<"T2 finished! Back to main!"<<endl;
     
 	while(1){

@@ -1,5 +1,5 @@
 #include<iostream>
-#include"thread.h"
+#include"uthread.h"
 
 using namespace std;
 
@@ -16,10 +16,10 @@ void *f(void*)
     static int k=0;
     while(1) {
         ++k;
-        printf("running thread is %d,in f (%d)\n",uthread::RunningList.front()->id,k);
+        printf("running thread is %d,in f (%d)\n",uthread_self(),k);
 		if(k == 15){			
 			cout<<"Thread of f() is terminated!"<<endl;
-			uthread::uthread_terminate(uthread::uthread_self());
+			uthread_terminate(uthread_self());
 		}
         myPause();
     }
@@ -30,10 +30,10 @@ void *g(void*)
     static int j=0;
     while(1){
         ++j;
-        printf("running thread is %d,in g (%d)\n",uthread::RunningList.front()->id,j);
+        printf("running thread is %d,in g (%d)\n", uthread_self(),j);
 		if(j == 30){			
 			cout<<"Thread of g() is terminated!"<<endl;
-			uthread::uthread_terminate(uthread::uthread_self());
+			uthread_terminate(uthread_self());
 		}
         myPause();
     }
@@ -45,28 +45,29 @@ int main()
 {
     cout<<"This test case is used to test uthread_join, uthread_terminate"<<endl;
     //setup();
-    uthread::uthread_init(2 * MICROSEC);
+    uthread_init(2 * MICROSEC);
 
-    Thread *t1 = new Thread();
-    t1->uthread_create(f,NULL);
+    //Thread *t1 = new Thread();
+    //t1->uthread_create(f,NULL);
     
-    Thread *t2 = new Thread(); 
-    t2->uthread_create(g, NULL);
+    //Thread *t2 = new Thread(); 
+    //t2->uthread_create(g, NULL);
 
-    // main thread
-    Thread* main_thread = new Thread();
+    int t1 = uthread_create(f, NULL);
+    int t2 = uthread_create(g, NULL);
+cout<<t1<<endl;
 
-    main_thread->S = RUNNING;
-    uthread::RunningList.push_back(main_thread->tcb);
-    uthread::Threads[0] = main_thread;
+        cout<<"Threads size:"<< Thread_count<<endl;
+        cout<<"Threads"<<endl;
+        for (int i=0; i <  Threads.size();i++){
+                cout<< Threads[i]->tcb->id<<" State: "<< Threads[i]->S<<endl;
+        }
 
-    main_thread->tcb->id = 0;
-    sigsetjmp(main_thread->tcb->jbuf,1);
- 
-	main_thread->uthread_join(t1->uthread_self(),NULL);
+
+    	uthread_join(t1,NULL);
 	cout<<"T1 finished! Back to main!"<<endl;
 
-	main_thread->uthread_join(t2->uthread_self(),NULL);
+	uthread_join(t2,NULL);
 	cout<<"T2 finished! Back to main!"<<endl;
     
 	while(1){
