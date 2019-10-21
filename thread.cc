@@ -61,6 +61,8 @@ int TAS(volatile int *addr, int newval){
 
 #define SUCCESS 0
 #define FAIL -1
+typedef int lock_t;
+
 
 struct itimerval timer;
 
@@ -396,7 +398,7 @@ int uthread::uthread_suspend(int tid){
 		//find the next thread and do context switch
                 if (uthread::ReadyList.size()>0){
                         target->S = WAITING;
-                        TCB* next_TCB = uthread::ReadyList.front();
+                 iio_triggered_buffer_cleanup       TCB* next_TCB = uthread::ReadyList.front();
                         Thread* next_thread = uthread::Threads[next_TCB->id];
                         uthread::ReadyList.pop_front();
                         uthread::RunningList.push_back(next_TCB);
@@ -468,4 +470,17 @@ int uthread::getCurrentUid(){
 		cout<<"no running thread\n";
 		exit(-1);
 	}
+}
+
+int lock_init(lock_t *lock){
+	TAS(lock, 0);
+	return 0;
+}
+
+int acquire(lock_t *lock){
+	return TAS(lock, 1) == 0 ? SUCCESS : FAIL;
+}
+
+int release(lock_t *lock){
+	return TAS(lock, 0) == 1 ? SUCCESS : FAIL;
 }
