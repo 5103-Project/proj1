@@ -5,7 +5,7 @@ using namespace std;
 
 void myPause(){
 	int t = 1;
-	for(int i = 0; i < 100000000; i++){
+	for(int i = 0; i < 1000000000; i++){
 		t *= i;
 	}
 }
@@ -34,8 +34,8 @@ void *f(void*)
 	}
 	printMilkStatus();
 	myPause();
-  	release(lock);	
-	myPause();
+  	release(lock);
+	cout<<"finish add milk\n";	
 	myPause();
     }
 }
@@ -52,7 +52,7 @@ void *g(void*)
 	printMilkStatus();
         myPause();
   	release(lock);	
-        myPause();
+	cout<<"finish remove milk\n";
         myPause();
     }
 }
@@ -63,7 +63,7 @@ int main()
 {
     cout<<"This test case is used to test lock and unlock"<<endl;
     //setup();
-    uthread::uthread_init(2 * MICROSEC);
+    uthread::uthread_init(1 * MICROSEC);
 
     Thread *t1 = new Thread();
     t1->uthread_create(f,NULL);
