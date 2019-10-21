@@ -61,8 +61,6 @@ int TAS(volatile int *addr, int newval){
 
 #define SUCCESS 0
 #define FAIL -1
-typedef int lock_t;
-
 
 struct itimerval timer;
 
@@ -476,7 +474,10 @@ int lock_init(lock_t *lock){
 }
 
 int acquire(lock_t *lock){
-	return TAS(lock, 1) == 0 ? SUCCESS : FAIL;
+	while(TAS(lock, 1) == 1){
+		;
+	}
+	return SUCCESS;
 }
 
 int release(lock_t *lock){
