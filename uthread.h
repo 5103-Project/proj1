@@ -18,6 +18,8 @@ typedef unsigned long address_t;
 
 typedef int Thread_id;
 
+typedef int lock_t;
+
 enum STATE{INIT, READY, WAITING, RUNNING, FINISHED};
 
 
@@ -85,6 +87,12 @@ public:
 	int uthread_resume(int tid);
 
     //static int uthread_self();
+// lock and unlock function define here
 
+int lock_init(lock_t* lock);
+
+int acquire(lock_t* lock);
+
+int release(lock_t* lock);
 
 #endif

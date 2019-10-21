@@ -1,5 +1,5 @@
 #include<iostream>
-#include"thread.h"
+#include"uthread.h"
 
 using namespace std;
 
@@ -63,23 +63,17 @@ int main()
 {
     cout<<"This test case is used to test lock and unlock"<<endl;
     //setup();
-    uthread::uthread_init(1 * MICROSEC);
-
+    uthread_init(1 * MICROSEC);
+/*
     Thread *t1 = new Thread();
     t1->uthread_create(f,NULL);
     
     Thread *t2 = new Thread(); 
     t2->uthread_create(g, NULL);
+*/
 
-    // main thread
-    Thread* main_thread = new Thread();
-
-    main_thread->S = RUNNING;
-    uthread::RunningList.push_back(main_thread->tcb);
-    uthread::Threads[0] = main_thread;
-
-    main_thread->tcb->id = 0;
-    sigsetjmp(main_thread->tcb->jbuf,1);
+    int t1 = uthread_create(f, NULL);
+    int t2 = uthread_create(g, NULL);
 
     lock = new lock_t();
     lock_init(lock);
