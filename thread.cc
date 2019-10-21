@@ -398,7 +398,7 @@ int uthread::uthread_suspend(int tid){
 		//find the next thread and do context switch
                 if (uthread::ReadyList.size()>0){
                         target->S = WAITING;
-                 iio_triggered_buffer_cleanup       TCB* next_TCB = uthread::ReadyList.front();
+                 	TCB* next_TCB = uthread::ReadyList.front();
                         Thread* next_thread = uthread::Threads[next_TCB->id];
                         uthread::ReadyList.pop_front();
                         uthread::RunningList.push_back(next_TCB);
