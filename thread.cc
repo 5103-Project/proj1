@@ -115,6 +115,11 @@ Thread::Thread(){
 	ReadyList.push_back(this->tcb);
 }
 
+Thread::~Thread(){
+	delete [] this->tcb->stack;
+	delete this->tcb;
+}
+
 Thread_id uthread_create(void *(*start_routine)(void *), void *arg){
 	block();
 	Thread* thread = new Thread();
@@ -231,7 +236,7 @@ int uthread_yield(){
 
         //TCB* running_thread_TCB =  RunningList.front();       
         //Thread* running_thread =  Threads[running_thread_TCB->id];
-
+	block();
 	TCB* current_TCB, *next_TCB;
 	current_TCB = RunningList.front();
 
@@ -260,11 +265,13 @@ int uthread_yield(){
 		
 		// Nothing happens
 	}
+	unblock();
 }
 
 
 
 int uthread_join(int tid, void **retval){
+	block();
 	int running_thread_id = uthread_self();
 	Thread* running_thread = Threads[running_thread_id];
 	Thread* target =  Threads[tid];
@@ -284,6 +291,7 @@ int uthread_join(int tid, void **retval){
 		}
 		else {
 			cerr<<"this is last thread!"<<endl;
+			unblock();
 			return -1;
 		}
 
@@ -291,7 +299,7 @@ int uthread_join(int tid, void **retval){
 	if (retval != NULL){
 		*retval = *target->tcb->retval;
 	}
-
+	unblock();
 	return 0;
 
 
@@ -305,6 +313,7 @@ void context_switch(Thread* t1, Thread* t2){
 		//cout<<" save context\n";
 		
 		if(sigsetjmp(t1->tcb->jbuf,1)){
+			unblock();
 			return;	
 		}
 		
@@ -316,7 +325,7 @@ void context_switch(Thread* t1, Thread* t2){
 }
 
 int uthread_terminate(int tid){
-
+	block();
 	Thread* target =  Threads[tid];
 	//TCB* tcb = target->tcb;
 	//delete [] tcb->stack;
@@ -337,6 +346,7 @@ int uthread_terminate(int tid){
 	}
 	else {
 		cerr<<"the thread has already been terminated!"<<endl;
+		unblock();
 		return -1;
 	}
 	//target->S = FINISHED;
@@ -369,14 +379,17 @@ int uthread_terminate(int tid){
 		}
 		else {
 			cerr<<"this is last thread!"<<endl;
+			unblock();
 			return -1;
 		}
 	
 	}
+	unblock();
 	return 0;
 }
 
 int uthread_suspend(int tid){
+	block();
 	// put thread from running to waiting.
 	Thread* target =  Threads[tid];
 	if (target->S == READY){
@@ -384,7 +397,8 @@ int uthread_suspend(int tid){
 		target->S = WAITING;
 		 WaitingList[target->tcb] = 0;
 		//printf("Thread %d is suspended from READY to WAITING!\n",tid);
-		return 0;
+		unblock();
+		 return 0;
         }
 	else if (target->S == RUNNING){
                  RunningList.remove(target->tcb);
@@ -404,17 +418,21 @@ int uthread_suspend(int tid){
                 }
                 else {
                         cerr<<"this is last thread!"<<endl;
-                        return -1;
+                        unblock();
+			return -1;
                 }
         }
 	else {
 		cerr<<"thread could only be suspended from either RUNNING or READY state!"<<endl;
+		unblock();
 		return -1;
 	}
+	unblock();
 	return 0;
 }
 
 int uthread_resume(int tid){
+	block();
 	Thread* target =  Threads[tid];
 	if (target->S == WAITING){
 		if ( WaitingList[target->tcb] == 0){
@@ -422,15 +440,18 @@ int uthread_resume(int tid){
 			target->S = READY;
 			 ReadyList.push_back(target->tcb);
 			//printf("Resume Thread %d!\n",tid);
-			return 0;
+			unblock();
+			 return 0;
 		}
 		else {
 			cerr<<"fail to resume because it is still waiting for some thread."<<endl;
+			unblock();
 			return -1;
 		}
 	}
 	else {
 		cerr<<"thread that has not been suspended cannot be resumed!";
+		unblock();
 		return -1;
 	}
 
@@ -455,15 +476,19 @@ void printForDebug(){
 }
 
 int uthread_self(void){
+	block();
 	if( RunningList.size() == 1){
+		unblock();
 		return RunningList.front()->id;
 	}
 	else if( RunningList.size() > 1){
 		std::cerr<<"More than one running thread!\n";
+		unblock();
 		exit(-1);
 	}
 	else{
 		cout<<"no running thread\n";
+		unblock();
 		exit(-1);
 	}
 }

@@ -41,6 +41,8 @@ public:
 	STATE S;
 
 	Thread();
+
+	~Thread();
 };
 
 
