@@ -27,9 +27,10 @@ void *g(void*)
     while(1){
         ++i;
         printf("in g (%d)\n",i);
-        //if (i % 5 == 0) {
-        //    printf("g: switching\n");
-        //}
+        if (i % 5 == 0) {
+            printf("g: yield\n");
+	    uthread_yield();
+        }
         myPause();
     }
 }
@@ -39,7 +40,7 @@ void *g(void*)
 int main()
 {
     cout<<"This test case is used to test uthread_init, uthread_create,"<<endl;
-    cout<<"uthread_yeild, scheduler, time slcing and basic context swtich."<<endl;
+    cout<<"uthread_yeild, uthread_self, scheduler, time slcing and basic context swtich."<<endl;
     //setup();
     uthread_init(2 * MICROSEC);
 

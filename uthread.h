@@ -82,6 +82,7 @@ public:
 
 	void context_switch(Thread* t1, Thread* t2);
 
+
 	int uthread_terminate(int tid);
 
 	int uthread_suspend(int tid);
@@ -97,4 +98,7 @@ int acquire(lock_t* lock);
 
 int release(lock_t* lock);
 
+void block();
+
+void unblock();
 #endif
